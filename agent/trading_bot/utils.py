@@ -62,7 +62,7 @@ def get_stock_data(stock_file):
 
     df.head()
 
-    return list(df['combined']) ,
+    return list(df['combined'])
 
 
 def switch_k_backend_device():
