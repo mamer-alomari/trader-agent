@@ -36,7 +36,7 @@ class Agent:
 
         # agent config
         self.state_size = state_size    	# normalized previous days
-        self.action_size = 3           		# [sit, buy, sell]
+        self.action_size = 3   # need to drop it down to only buy and sell 		# [sit, buy, sell]
         self.model_name = model_name
         self.inventory = []
         self.memory = deque(maxlen=10000)
@@ -48,10 +48,11 @@ class Agent:
         self.epsilon = 1.0
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.learning_rate = 0.001
+        self.learning_rate = 0.004
         self.loss = huber_loss
         self.custom_objects = {"huber_loss": huber_loss}  # important for loading the model from memory
         self.optimizer = Adam(learning_rate=self.learning_rate)  # opt = adam(lr=0.001, decay=1e-6)
+        self.losse =None
 
 
         if pretrained and self.model_name is not None:
@@ -73,9 +74,10 @@ class Agent:
         """
         model = Sequential()
         model.add(Dense(units=128, activation="relu", input_dim=self.state_size))
-        model.add(Dense(units=256, activation="relu"))
-        model.add(Dense(units=256, activation="relu"))
-        model.add(Dense(units=128, activation="relu"))
+        # model.add(Dense(units=256, activation="relu"))
+        # model.add(Dense(units=256, activation="relu"))
+        model.add(Dense(units=128, activation="sigmoid"))
+        model.add(Dense(units=64, activation="linear"))
         model.add(Dense(units=self.action_size))
 
         model.compile(loss=self.loss, optimizer=self.optimizer)
@@ -97,7 +99,14 @@ class Agent:
             self.first_iter = False
             return 1 # make a definite buy on the first iter
 
+        # force the model to change prediction if the model predicted the same action the last 50 iterations
+        # if self.n_iter % 50 == 0:
+        #     self.memory
+        #     return random.randrange(self.action_size)
+
         action_probs = self.model.predict(state)
+
+
         return np.argmax(action_probs[0])
 
     def train_experience_replay(self, batch_size):
@@ -178,11 +187,15 @@ class Agent:
         # make less random and more optimal decisions
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
-
+        self.loss = loss
         return loss
 
-    def save(self, episode):
-        self.model.save("models/{}_{}".format(self.model_name, episode))
+    def save(self, model_name):
+        """Save the model
+        """
+        # load_model_weights = self.model.get_weights()
+        # self.model.save_weights("models/model_{}.h5".format(episode))
+        self.model.save(f"models/{model_name}.h5")  #.format(self.model_name, episode))
 
     def load(self):
-        return load_model("models/" + self.model_name, custom_objects=self.custom_objects)
+        return load_model("models/" + self.model_name+".h5", custom_objects=self.custom_objects)
